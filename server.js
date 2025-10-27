@@ -59,14 +59,25 @@ app.post("/mix", async (req, res) => {
       .audioCodec("libmp3lame")
       .audioBitrate("192k")
       .on("end", () => {
-        const fileBuffer = fs.readFileSync(outputPath);
-        res.setHeader("Content-Type", "audio/mpeg");
-        res.send(fileBuffer);
+        try {
+          const outputBuffer = fs.readFileSync(outputPath);
+          const outputBase64 = outputBuffer.toString("base64");
 
-        // limpa arquivos temporários
-        [voicePath, musicPath, outputPath].forEach((f) => {
-          if (fs.existsSync(f)) fs.unlinkSync(f);
-        });
+          // ✅ Retorno como JSON
+          res.json({
+            success: true,
+            message: "Áudio mesclado com sucesso!",
+            audioBase64: outputBase64,
+          });
+        } catch (err) {
+          console.error("Erro ao ler arquivo final:", err);
+          res.status(500).json({ error: "Falha ao processar o áudio final." });
+        } finally {
+          // limpa arquivos temporários
+          [voicePath, musicPath, outputPath].forEach((f) => {
+            if (fs.existsSync(f)) fs.unlinkSync(f);
+          });
+        }
       })
       .on("error", (err) => {
         console.error("Erro no ffmpeg:", err);
@@ -74,12 +85,4 @@ app.post("/mix", async (req, res) => {
       })
       .save(outputPath);
   } catch (err) {
-    console.error("Erro geral:", err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get("/", (_, res) => res.send("🎧 API de mistura de áudio ativa e funcionando!"));
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));
+    console.error
